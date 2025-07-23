@@ -76,7 +76,7 @@ export default function ChatInterface() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [selectedConversation?.messages]);
+  }, [selectedConversation, conversations]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -175,7 +175,7 @@ export default function ChatInterface() {
     const { error } = await supabase
       .from('messages')
       .insert({
-        conversation_id: selectedConversation.id,
+        conversation_id: selectedConversation,
         sender_id: user.id,
         content: newMessage.trim()
       });
@@ -308,39 +308,42 @@ export default function ChatInterface() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {selectedConversation ? (
-          <>
-            {/* Chat Header */}
-            <div className="p-4 border-b border-border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <Avatar>
-                    <AvatarFallback>
-                      {getConversationName(selectedConversation).charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h2 className="font-semibold">
-                      {getConversationName(selectedConversation)}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedConversation.participants.length} participants
-                    </p>
+          (() => {
+            const conversation = conversations.find(c => c.id === selectedConversation);
+            return conversation ? (
+              <>
+                {/* Chat Header */}
+                <div className="p-4 border-b border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <Avatar>
+                        <AvatarFallback>
+                          {getConversationName(conversation).charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h2 className="font-semibold">
+                          {getConversationName(conversation)}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          {conversation.participants.length} participants
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button variant="ghost" size="icon">
+                        <Phone className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon">
+                        <Video className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="icon">
-                    <Phone className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon">
-                    <Video className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {selectedConversation.messages.map((message) => (
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {conversation.messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${
@@ -383,8 +386,10 @@ export default function ChatInterface() {
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
-          </>
+                </div>
+              </>
+            ) : null;
+          })()
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
