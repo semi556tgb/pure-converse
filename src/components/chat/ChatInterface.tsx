@@ -140,7 +140,7 @@ export default function ChatInterface() {
           `)
           .eq('conversation_id', conversationId);
 
-        // Get recent messages with encryption fields
+        // Get recent messages with encryption fields and reply info
         const { data: messages } = await supabase
           .from('messages')
           .select(`
@@ -150,6 +150,7 @@ export default function ChatInterface() {
             encryption_key_id,
             sender_id,
             created_at,
+            reply_to,
             profiles!inner(
               id,
               username,

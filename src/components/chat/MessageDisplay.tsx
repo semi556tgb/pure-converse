@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { encryption } from '@/lib/encryption';
 import { Button } from '@/components/ui/button';
-import { Trash2, Reply, MoreVertical } from 'lucide-react';
+import { Trash2, Reply, MoreVertical, Smile } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +11,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+
+interface MessageReaction {
+  id: string;
+  emoji: string;
+  user_id: string;
+  count?: number;
+}
 
 interface MessageDisplayProps {
   message: {
@@ -20,6 +32,7 @@ interface MessageDisplayProps {
     encryption_key_id?: string;
     sender_id: string;
     created_at: string;
+    reply_to?: string;
   };
   isCurrentUser: boolean;
   onReply?: (message: any) => void;
@@ -31,6 +44,7 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
   const { toast } = useToast();
   const [decryptedContent, setDecryptedContent] = useState<string>('');
   const [isDecrypting, setIsDecrypting] = useState(false);
+  const [reactions, setReactions] = useState<MessageReaction[]>([]);
 
   useEffect(() => {
     const decryptMessage = async () => {
@@ -55,6 +69,72 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
 
     decryptMessage();
   }, [message]);
+
+  // Fetch reactions for this message
+  useEffect(() => {
+    const fetchReactions = async () => {
+      const { data, error } = await supabase
+        .from('message_reactions')
+        .select('*')
+        .eq('message_id', message.id);
+
+      if (!error && data) {
+        // Group reactions by emoji and count them
+        const reactionMap = new Map<string, MessageReaction>();
+        data.forEach(reaction => {
+          const key = reaction.emoji;
+          if (reactionMap.has(key)) {
+            const existing = reactionMap.get(key)!;
+            existing.count = (existing.count || 1) + 1;
+          } else {
+            reactionMap.set(key, {
+              id: reaction.id,
+              emoji: reaction.emoji,
+              user_id: reaction.user_id,
+              count: 1
+            });
+          }
+        });
+        setReactions(Array.from(reactionMap.values()));
+      }
+    };
+
+    fetchReactions();
+
+    // Listen for reaction changes
+    const channel = supabase
+      .channel(`message-reactions-${message.id}`)
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'message_reactions', filter: `message_id=eq.${message.id}` },
+        () => fetchReactions()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [message.id]);
+
+  const addReaction = async (emoji: string) => {
+    try {
+      const { error } = await supabase
+        .from('message_reactions')
+        .insert({
+          message_id: message.id,
+          user_id: user?.id,
+          emoji: emoji
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error adding reaction:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add reaction",
+        variant: "destructive"
+      });
+    }
+  };
 
   const deleteMessage = async () => {
     try {
@@ -115,7 +195,8 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
           
           {/* Message Actions */}
           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-            {onReply && (
+            {/* Only show reply button for other users' messages */}
+            {onReply && !isCurrentUser && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -124,6 +205,32 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
               >
                 <Reply className="h-3 w-3" />
               </Button>
+            )}
+            
+            {/* Emoji reactions - only for other users' messages */}
+            {!isCurrentUser && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                    <Smile className="h-3 w-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2">
+                  <div className="flex space-x-2">
+                    {['❤️', '👍', '👎', '😂', '😮', '😢'].map(emoji => (
+                      <Button
+                        key={emoji}
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => addReaction(emoji)}
+                      >
+                        {emoji}
+                      </Button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
             
             {isCurrentUser && (
@@ -146,6 +253,20 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
             )}
           </div>
         </div>
+        
+        {/* Show reactions if any */}
+        {reactions.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {reactions.map((reaction) => (
+              <span
+                key={reaction.id}
+                className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-background border"
+              >
+                {reaction.emoji} {reaction.count && reaction.count > 1 ? reaction.count : ''}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
