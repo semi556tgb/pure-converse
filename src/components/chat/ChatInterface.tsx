@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { MessageCircle, Send, Phone, Video, Settings, Moon, Sun } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { useToast } from '@/hooks/use-toast';
-import CreateConversation from './CreateConversation';
+import AddFriend from './AddFriend';
+import PendingRequests from './PendingRequests';
 
 interface Profile {
   id: string;
@@ -249,7 +250,10 @@ export default function ChatInterface() {
 
         {/* Create Conversation Button */}
         <div className="p-4 border-b border-border">
-          <CreateConversation onConversationCreated={fetchConversations} />
+          <div className="flex space-x-2">
+            <AddFriend onFriendAdded={fetchConversations} />
+            <PendingRequests onRequestHandled={fetchConversations} />
+          </div>
         </div>
 
         {/* Conversations List */}
