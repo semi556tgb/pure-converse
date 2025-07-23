@@ -281,7 +281,7 @@ export default function ChatInterface() {
 
         {/* Create Conversation Button */}
         <div className="p-4 border-b border-border">
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2">
             <AddFriend onFriendAdded={fetchConversations} />
             <PendingRequests onRequestHandled={fetchConversations} />
             <UserProfile />
@@ -290,15 +290,6 @@ export default function ChatInterface() {
 
         {/* Friends List */}
         <FriendsList onChatSelected={setSelectedConversation} onConversationCreated={fetchConversations} />
-        
-        {/* Only show conversations section if there are conversations */}
-        {conversations.length > 0 && (
-          <div className="border-t border-border mt-4">
-            <h3 className="text-sm font-medium text-foreground px-4 py-2">
-              Recent Chats
-            </h3>
-          </div>
-        )}
       </div>
 
       {/* Main Chat Area */}
