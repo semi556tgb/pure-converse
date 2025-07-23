@@ -45,6 +45,7 @@ export default function ChatInterface() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [replyingTo, setReplyingTo] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -183,21 +184,29 @@ export default function ChatInterface() {
         selectedConversation
       );
 
+      const messageData: any = {
+        conversation_id: selectedConversation,
+        sender_id: user.id,
+        content: '[Encrypted]', // Placeholder for unencrypted fallback
+        encrypted_content: encryptedContent,
+        encryption_key_id: encryptionKeyId
+      };
+
+      // Add reply reference if replying
+      if (replyingTo) {
+        messageData.reply_to = replyingTo.id;
+      }
+
       const { error } = await supabase
         .from('messages')
-        .insert({
-          conversation_id: selectedConversation,
-          sender_id: user.id,
-          content: '[Encrypted]', // Placeholder for unencrypted fallback
-          encrypted_content: encryptedContent,
-          encryption_key_id: encryptionKeyId
-        });
+        .insert(messageData);
 
       if (error) {
         throw error;
       }
 
       setNewMessage('');
+      setReplyingTo(null);
       fetchConversations();
     } catch (error) {
       console.error('Error sending message:', error);
@@ -275,50 +284,15 @@ export default function ChatInterface() {
 
         {/* Friends List */}
         <FriendsList onChatSelected={setSelectedConversation} onConversationCreated={fetchConversations} />
-
-        {/* Conversations List */}
-        <div className="flex-1 overflow-y-auto">
-          {conversations.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground">
-              <p>No conversations yet</p>
-              <p className="text-sm mt-2">Add friends to start chatting</p>
-            </div>
-          ) : (
-            conversations.map((conversation) => (
-              <div
-                key={conversation.id}
-                className={`p-4 hover:bg-accent cursor-pointer border-b border-border ${
-                  selectedConversation === conversation.id ? 'bg-accent' : ''
-                }`}
-                onClick={() => setSelectedConversation(conversation.id)}
-              >
-                <div className="flex items-center space-x-3">
-                  <Avatar>
-                    <AvatarFallback>
-                      {getConversationName(conversation).charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium truncate">
-                        {getConversationName(conversation)}
-                      </p>
-                      <Badge variant="secondary" className="text-xs">
-                        {conversation.participants.length}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {conversation.messages.length > 0
-                        ? conversation.messages[conversation.messages.length - 1].content
-                        : 'No messages yet'
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+        
+        {/* Only show conversations section if there are conversations */}
+        {conversations.length > 0 && (
+          <div className="border-t border-border mt-4">
+            <h3 className="text-sm font-medium text-foreground px-4 py-2">
+              Recent Chats
+            </h3>
+          </div>
+        )}
       </div>
 
       {/* Main Chat Area */}
@@ -364,14 +338,34 @@ export default function ChatInterface() {
                       key={message.id}
                       message={message}
                       isCurrentUser={message.sender_id === user?.id}
+                      onReply={setReplyingTo}
+                      onMessageDeleted={fetchConversations}
                     />
                   ))}
                   <div ref={messagesEndRef} />
                 </div>
 
-            {/* Message Input */}
-            <div className="p-4 border-t border-border">
-              <div className="flex space-x-2">
+                {/* Message Input */}
+                <div className="p-4 border-t border-border">
+                  {replyingTo && (
+                    <div className="mb-2 p-2 bg-muted rounded text-sm">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-muted-foreground">Replying to:</span>
+                          <p className="truncate">{replyingTo.content || '[Encrypted Message]'}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setReplyingTo(null)}
+                          className="h-6 w-6 p-0"
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex space-x-2">
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
