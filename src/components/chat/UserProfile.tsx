@@ -93,7 +93,7 @@ export default function UserProfile() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+        <Button variant="outline" size="sm" className="flex items-center space-x-2">
           <User className="h-4 w-4" />
           <span>Profile</span>
         </Button>
