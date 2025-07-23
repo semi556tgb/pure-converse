@@ -378,6 +378,10 @@ export type Database = {
         Args: { friend_id: string }
         Returns: string
       }
+      create_group_conversation: {
+        Args: { group_name_param: string; friend_ids: string[] }
+        Returns: string
+      }
       user_is_conversation_participant: {
         Args: { conversation_id_param: string; user_id_param: string }
         Returns: boolean

@@ -95,34 +95,18 @@ export default function CreateGroup({ onGroupCreated }: CreateGroupProps) {
     
     try {
       console.log('Creating group with user:', user.id);
-      console.log('Auth state:', await supabase.auth.getUser());
+      console.log('Selected friends:', selectedFriends);
+      console.log('Group name:', groupName.trim());
       
-      // Create group conversation
-      const { data: conversation, error: convError } = await supabase
-        .from('conversations')
-        .insert({
-          type: 'group',
-          name: groupName.trim(),
-          created_by: user.id
-        })
-        .select()
-        .single();
+      // Use the database function to create group conversation
+      const { data: conversationId, error: funcError } = await supabase
+        .rpc('create_group_conversation', {
+          group_name_param: groupName.trim(),
+          friend_ids: selectedFriends
+        });
 
-      console.log('Insert result:', { conversation, convError });
-      if (convError) throw convError;
-
-      // Add all participants (creator + selected friends)
-      const participantsToAdd = [user.id, ...selectedFriends];
-      const { error: participantError } = await supabase
-        .from('conversation_participants')
-        .insert(
-          participantsToAdd.map(userId => ({
-            conversation_id: conversation.id,
-            user_id: userId
-          }))
-        );
-
-      if (participantError) throw participantError;
+      console.log('Function result:', { conversationId, funcError });
+      if (funcError) throw funcError;
 
       toast({
         title: "Group created",
@@ -137,7 +121,7 @@ export default function CreateGroup({ onGroupCreated }: CreateGroupProps) {
       console.error('Error creating group:', error);
       toast({
         title: "Error",
-        description: "Failed to create group",
+        description: error.message || "Failed to create group",
         variant: "destructive"
       });
     } finally {
