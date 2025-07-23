@@ -414,8 +414,47 @@ export default function ChatInterface() {
           </div>
         </div>
 
-        {/* Friends List */}
-        <FriendsList onChatSelected={setSelectedConversation} onConversationCreated={fetchConversations} />
+        {/* Conversations List */}
+        <div className="flex-1 overflow-y-auto">
+          {conversations.length > 0 && (
+            <div className="space-y-2 mb-4">
+              <h3 className="text-sm font-medium text-foreground px-4 py-2">
+                Conversations ({conversations.length})
+              </h3>
+              <div className="space-y-1">
+                {conversations.map((conversation) => (
+                  <div
+                    key={conversation.id}
+                    className={`flex items-center space-x-3 p-3 mx-2 rounded-lg hover:bg-accent cursor-pointer ${
+                      selectedConversation === conversation.id ? 'bg-accent' : ''
+                    }`}
+                    onClick={() => setSelectedConversation(conversation.id)}
+                  >
+                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-medium text-primary">
+                        {getConversationName(conversation).charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {getConversationName(conversation)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {conversation.type === 'group' 
+                          ? `${conversation.participants.length} members`
+                          : 'Direct message'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Friends List */}
+          <FriendsList onChatSelected={setSelectedConversation} onConversationCreated={fetchConversations} />
+        </div>
       </div>
 
       {/* Main Chat Area */}
