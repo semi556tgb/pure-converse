@@ -382,6 +382,14 @@ export type Database = {
         Args: { group_name_param: string; friend_ids: string[] }
         Returns: string
       }
+      delete_group_conversation: {
+        Args: { conversation_id_param: string }
+        Returns: boolean
+      }
+      kick_group_member: {
+        Args: { conversation_id_param: string; member_id_param: string }
+        Returns: boolean
+      }
       user_is_conversation_participant: {
         Args: { conversation_id_param: string; user_id_param: string }
         Returns: boolean

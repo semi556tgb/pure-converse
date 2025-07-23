@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Send, Phone, Video, Settings, Moon, Sun } from 'lucide-react';
+import { MessageCircle, Send, Phone, Video, Settings, Moon, Sun, Crown } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { useToast } from '@/hooks/use-toast';
 import AddFriend from './AddFriend';
@@ -18,6 +18,7 @@ import TypingIndicator from './TypingIndicator';
 import UserProfile from './UserProfile';
 import CreateGroup from './CreateGroup';
 import CallInterface from './CallInterface';
+import GroupManagement from './GroupManagement';
 
 interface Profile {
   id: string;
@@ -38,6 +39,7 @@ interface Conversation {
   id: string;
   name?: string;
   type: string;
+  created_by?: string;
   participants: Profile[];
   messages: Message[];
 }
@@ -160,6 +162,7 @@ export default function ChatInterface() {
           name,
           group_name,
           type,
+          created_by,
           created_at
         )
       `)
@@ -214,6 +217,7 @@ export default function ChatInterface() {
           id: conversationId,
           name: item.conversations.name || item.conversations.group_name,
           type: item.conversations.type,
+          created_by: item.conversations.created_by,
           participants: participants?.map(p => p.profiles) || [],
           messages: messages || []
         };
@@ -435,17 +439,22 @@ export default function ChatInterface() {
                         {getConversationName(conversation).charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {getConversationName(conversation)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {conversation.type === 'group' 
-                          ? `${conversation.participants.length} members`
-                          : 'Direct message'
-                        }
-                      </p>
-                    </div>
+                     <div className="flex-1 min-w-0">
+                       <div className="flex items-center space-x-1">
+                         <p className="text-sm font-medium truncate">
+                           {getConversationName(conversation)}
+                         </p>
+                         {conversation.type === 'group' && conversation.created_by === user?.id && (
+                           <Crown className="h-3 w-3 text-yellow-500 flex-shrink-0" />
+                         )}
+                       </div>
+                       <p className="text-xs text-muted-foreground">
+                         {conversation.type === 'group' 
+                           ? `${conversation.participants.length} members`
+                           : 'Direct message'
+                         }
+                       </p>
+                     </div>
                   </div>
                 ))}
               </div>
@@ -482,14 +491,24 @@ export default function ChatInterface() {
                         </p>
                       </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="icon" onClick={startCall}>
-                    <Phone className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon">
-                    <Video className="h-4 w-4" />
-                  </Button>
-                </div>
+                 <div className="flex items-center space-x-2">
+                   <Button variant="ghost" size="icon" onClick={startCall}>
+                     <Phone className="h-4 w-4" />
+                   </Button>
+                   <Button variant="ghost" size="icon">
+                     <Video className="h-4 w-4" />
+                   </Button>
+                   {conversation.type === 'group' && (
+                     <GroupManagement
+                       conversation={conversation}
+                       onGroupUpdated={fetchConversations}
+                       onGroupDeleted={() => {
+                         setSelectedConversation(null);
+                         fetchConversations();
+                       }}
+                     />
+                   )}
+                 </div>
               </div>
             </div>
 
