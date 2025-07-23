@@ -18,6 +18,8 @@ import UserProfile from './UserProfile';
 import CreateGroup from './CreateGroup';
 import CallInterface from './CallInterface';
 import GroupManagement from './GroupManagement';
+import IncomingCallModal from './IncomingCallModal';
+import UserProfileModal from './UserProfileModal';
 
 interface Profile {
   id: string;
@@ -58,6 +60,8 @@ export default function ChatInterface() {
   const [activeCall, setActiveCall] = useState<string | null>(null);
   const [characterCount, setCharacterCount] = useState(0);
   const MAX_MESSAGE_LENGTH = 2000;
+  const [incomingCall, setIncomingCall] = useState<any>(null);
+  const [selectedUserProfile, setSelectedUserProfile] = useState<string | null>(null);
   const [callNotifications, setCallNotifications] = useState<Array<{
     id: string;
     username: string;
@@ -94,26 +98,18 @@ export default function ChatInterface() {
           },
           async (payload) => {
             if (payload.new.status === 'active' && payload.new.initiator_id !== user.id) {
-              // Get the initiator's profile
+              // Get the initiator's profile for incoming call
               const { data: initiatorProfile } = await supabase
                 .from('profiles')
-                .select('username')
+                .select('username, avatar_url')
                 .eq('id', payload.new.initiator_id)
                 .single();
 
               if (initiatorProfile) {
-                const notification = {
-                  id: payload.new.id,
-                  username: initiatorProfile.username,
-                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                };
-                
-                setCallNotifications(prev => [...prev, notification]);
-                
-                // Remove notification after 10 seconds
-                setTimeout(() => {
-                  setCallNotifications(prev => prev.filter(n => n.id !== notification.id));
-                }, 10000);
+                setIncomingCall({
+                  ...payload.new,
+                  initiator_profile: initiatorProfile
+                });
               }
             }
           }
@@ -391,6 +387,46 @@ export default function ChatInterface() {
       .eq('conversation_id', selectedConversation);
   };
 
+  const handleAcceptCall = async () => {
+    if (!incomingCall || !user) return;
+    
+    // Join the call
+    await supabase
+      .from('call_participants')
+      .insert({
+        call_id: incomingCall.id,
+        user_id: user.id
+      });
+
+    setActiveCall(incomingCall.id);
+    setIncomingCall(null);
+  };
+
+  const handleDeclineCall = () => {
+    setIncomingCall(null);
+  };
+
+  const startChatWithUser = async (userId: string) => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase.rpc('create_friend_conversation', {
+        friend_id: userId
+      });
+
+      if (error) throw error;
+
+      if (data) {
+        fetchConversations();
+        setTimeout(() => {
+          setSelectedConversation(data);
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error starting chat:', error);
+    }
+  };
+
   return (
     <div className="h-screen flex bg-background">
       {/* Sidebar */}
@@ -466,11 +502,11 @@ export default function ChatInterface() {
                            <Crown className="h-3 w-3 text-yellow-500 flex-shrink-0" />
                          )}
                        </div>
-                       <p className="text-xs text-muted-foreground">
-                         {conversation.type === 'group' 
-                           ? `${conversation.participants.length} members`
-                           : 'Direct message'
-                         }
+                        <p className="text-xs text-muted-foreground">
+                          {conversation.type === 'group' 
+                            ? `${conversation.participants.length} members`
+                            : conversation.participants.find(p => p.id !== user?.id)?.username || 'Unknown'
+                          }
                        </p>
                      </div>
                   </div>
@@ -508,27 +544,27 @@ export default function ChatInterface() {
                           {conversation.participants.length} participants
                         </p>
                       </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button variant="ghost" size="icon" onClick={startCall}>
+                        <Phone className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon">
+                        <Video className="h-4 w-4" />
+                      </Button>
+                      {conversation.type === 'group' && (
+                        <GroupManagement
+                          conversation={conversation}
+                          onGroupUpdated={fetchConversations}
+                          onGroupDeleted={() => {
+                            setSelectedConversation(null);
+                            fetchConversations();
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
                 </div>
-                 <div className="flex items-center space-x-2">
-                   <Button variant="ghost" size="icon" onClick={startCall}>
-                     <Phone className="h-4 w-4" />
-                   </Button>
-                   <Button variant="ghost" size="icon">
-                     <Video className="h-4 w-4" />
-                   </Button>
-                   {conversation.type === 'group' && (
-                     <GroupManagement
-                       conversation={conversation}
-                       onGroupUpdated={fetchConversations}
-                       onGroupDeleted={() => {
-                         setSelectedConversation(null);
-                         fetchConversations();
-                       }}
-                     />
-                   )}
-                 </div>
-              </div>
-            </div>
 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4">
@@ -649,6 +685,25 @@ export default function ChatInterface() {
           </div>
         </div>
       ))}
+
+      {/* Incoming Call Modal */}
+      {incomingCall && (
+        <IncomingCallModal
+          call={incomingCall}
+          onAccept={handleAcceptCall}
+          onDecline={handleDeclineCall}
+        />
+      )}
+
+      {/* User Profile Modal */}
+      {selectedUserProfile && (
+        <UserProfileModal
+          userId={selectedUserProfile}
+          isOpen={!!selectedUserProfile}
+          onClose={() => setSelectedUserProfile(null)}
+          onStartChat={startChatWithUser}
+        />
+      )}
     </div>
   );
 }

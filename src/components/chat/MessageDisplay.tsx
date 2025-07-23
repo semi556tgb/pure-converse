@@ -16,6 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import UserProfileModal from './UserProfileModal';
 
 interface MessageReaction {
   id: string;
@@ -47,6 +48,7 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
   const { user } = useAuth();
   const { toast } = useToast();
   const [reactions, setReactions] = useState<MessageReaction[]>([]);
+  const [showUserProfile, setShowUserProfile] = useState(false);
 
   // Fetch reactions for this message
   useEffect(() => {
@@ -207,9 +209,12 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
         >
           {/* Show username for non-current user messages */}
           {!isCurrentUser && message.profiles && (
-            <p className="text-xs font-medium mb-1 opacity-70">
+            <button 
+              onClick={() => setShowUserProfile(true)}
+              className="text-xs font-medium mb-1 opacity-70 hover:opacity-100 transition-opacity cursor-pointer hover:underline"
+            >
               {message.profiles.display_name || message.profiles.username}
-            </p>
+            </button>
           )}
           
           <p className="text-sm break-words">
@@ -314,6 +319,15 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
             {message.profiles?.username?.charAt(0).toUpperCase() || 'U'}
           </AvatarFallback>
         </Avatar>
+      )}
+      
+      {/* User Profile Modal */}
+      {!isCurrentUser && (
+        <UserProfileModal
+          userId={message.sender_id}
+          isOpen={showUserProfile}
+          onClose={() => setShowUserProfile(false)}
+        />
       )}
     </div>
   );
