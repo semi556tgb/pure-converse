@@ -16,6 +16,8 @@ import FriendsList from './FriendsList';
 import MessageDisplay from './MessageDisplay';
 import TypingIndicator from './TypingIndicator';
 import UserProfile from './UserProfile';
+import CreateGroup from './CreateGroup';
+import CallInterface from './CallInterface';
 
 interface Profile {
   id: string;
@@ -51,6 +53,9 @@ export default function ChatInterface() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [activeCall, setActiveCall] = useState<string | null>(null);
+  const [characterCount, setCharacterCount] = useState(0);
+  const MAX_MESSAGE_LENGTH = 2000;
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -244,6 +249,87 @@ export default function ChatInterface() {
     return otherParticipants.map(p => p.username).join(', ') || 'Empty Chat';
   };
 
+  const startCall = async () => {
+    if (!selectedConversation || !user) return;
+
+    try {
+      // Create a new call
+      const { data: call, error } = await supabase
+        .from('calls')
+        .insert({
+          conversation_id: selectedConversation,
+          initiator_id: user.id,
+          call_type: 'voice',
+          status: 'active'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add current user as participant
+      await supabase
+        .from('call_participants')
+        .insert({
+          call_id: call.id,
+          user_id: user.id
+        });
+
+      setActiveCall(call.id);
+    } catch (error) {
+      console.error('Error starting call:', error);
+    }
+  };
+
+  // Handle typing indicator
+  const handleTyping = async () => {
+    if (!selectedConversation || !user) return;
+
+    // Clear existing timeout
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+
+    // Set typing status
+    if (!isTyping) {
+      setIsTyping(true);
+      await supabase
+        .from('typing_status')
+        .upsert({
+          user_id: user.id,
+          conversation_id: selectedConversation,
+          is_typing: true
+        });
+    }
+
+    // Set timeout to clear typing status
+    const timeout = setTimeout(async () => {
+      setIsTyping(false);
+      await supabase
+        .from('typing_status')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('conversation_id', selectedConversation);
+    }, 2000);
+
+    setTypingTimeout(timeout);
+  };
+
+  const stopTyping = async () => {
+    if (!selectedConversation || !user) return;
+
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+
+    setIsTyping(false);
+    await supabase
+      .from('typing_status')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('conversation_id', selectedConversation);
+  };
+
   return (
     <div className="h-screen flex bg-background">
       {/* Sidebar */}
@@ -284,6 +370,7 @@ export default function ChatInterface() {
           <div className="flex flex-wrap gap-2">
             <AddFriend onFriendAdded={fetchConversations} />
             <PendingRequests onRequestHandled={fetchConversations} />
+            <CreateGroup onGroupCreated={fetchConversations} />
             <UserProfile />
           </div>
         </div>
@@ -316,17 +403,17 @@ export default function ChatInterface() {
                           {conversation.participants.length} participants
                         </p>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="ghost" size="icon">
-                        <Phone className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <Video className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <Button variant="ghost" size="icon" onClick={startCall}>
+                    <Phone className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon">
+                    <Video className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -366,17 +453,39 @@ export default function ChatInterface() {
                     </div>
                   )}
                   <div className="flex space-x-2">
-                <Input
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type a message..."
-                  className="flex-1"
-                />
-                <Button onClick={sendMessage} disabled={!newMessage.trim()}>
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
+                    <Input
+                      value={newMessage}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value.length <= MAX_MESSAGE_LENGTH) {
+                          setNewMessage(value);
+                          setCharacterCount(value.length);
+                          handleTyping();
+                        }
+                      }}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          sendMessage();
+                          stopTyping();
+                        }
+                      }}
+                      onBlur={stopTyping}
+                      placeholder="Type a message..."
+                      className="flex-1"
+                    />
+                    <div className="text-xs text-muted-foreground px-2 self-center">
+                      {characterCount}/{MAX_MESSAGE_LENGTH}
+                    </div>
+                    <Button 
+                      onClick={() => {
+                        sendMessage();
+                        stopTyping();
+                      }} 
+                      disabled={!newMessage.trim()}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </>
             ) : null;
@@ -393,6 +502,15 @@ export default function ChatInterface() {
           </div>
         )}
       </div>
+
+      {/* Call Interface */}
+      {activeCall && selectedConversation && (
+        <CallInterface
+          callId={activeCall}
+          conversationId={selectedConversation}
+          onEndCall={() => setActiveCall(null)}
+        />
+      )}
     </div>
   );
 }

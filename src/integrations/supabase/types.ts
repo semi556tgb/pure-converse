@@ -14,34 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      call_participants: {
+        Row: {
+          call_id: string
+          id: string
+          is_muted: boolean | null
+          is_video_enabled: boolean | null
+          joined_at: string | null
+          left_at: string | null
+          user_id: string
+        }
+        Insert: {
+          call_id: string
+          id?: string
+          is_muted?: boolean | null
+          is_video_enabled?: boolean | null
+          joined_at?: string | null
+          left_at?: string | null
+          user_id: string
+        }
+        Update: {
+          call_id?: string
+          id?: string
+          is_muted?: boolean | null
+          is_video_enabled?: boolean | null
+          joined_at?: string | null
+          left_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_participants_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calls: {
         Row: {
+          call_data: Json | null
           call_type: string | null
           conversation_id: string | null
           duration_seconds: number | null
           ended_at: string | null
           id: string
           initiator_id: string | null
+          is_group_call: boolean | null
           started_at: string | null
           status: string | null
         }
         Insert: {
+          call_data?: Json | null
           call_type?: string | null
           conversation_id?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
           initiator_id?: string | null
+          is_group_call?: boolean | null
           started_at?: string | null
           status?: string | null
         }
         Update: {
+          call_data?: Json | null
           call_type?: string | null
           conversation_id?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
           initiator_id?: string | null
+          is_group_call?: boolean | null
           started_at?: string | null
           status?: string | null
         }
@@ -102,6 +146,8 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          group_description: string | null
+          group_name: string | null
           id: string
           name: string | null
           type: string | null
@@ -110,6 +156,8 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          group_description?: string | null
+          group_name?: string | null
           id?: string
           name?: string | null
           type?: string | null
@@ -118,6 +166,8 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          group_description?: string | null
+          group_name?: string | null
           id?: string
           name?: string | null
           type?: string | null
