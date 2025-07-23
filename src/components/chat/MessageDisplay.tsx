@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { encryption } from '@/lib/encryption';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Trash2, Reply, MoreVertical, Smile } from 'lucide-react';
@@ -29,8 +28,6 @@ interface MessageDisplayProps {
   message: {
     id: string;
     content: string;
-    encrypted_content?: string;
-    encryption_key_id?: string;
     sender_id: string;
     created_at: string;
     reply_to?: string;
@@ -49,38 +46,7 @@ interface MessageDisplayProps {
 export default function MessageDisplay({ message, isCurrentUser, onReply, onMessageDeleted, replyToMessage }: MessageDisplayProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [decryptedContent, setDecryptedContent] = useState<string>('');
-  const [isDecrypting, setIsDecrypting] = useState(false);
   const [reactions, setReactions] = useState<MessageReaction[]>([]);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-
-  useEffect(() => {
-    const decryptMessage = async () => {
-      if (message.encrypted_content && message.encryption_key_id) {
-        setIsDecrypting(true);
-        try {
-          const decrypted = await encryption.decryptMessage(
-            message.encrypted_content,
-            message.encryption_key_id
-          );
-          // Sanitize the decrypted content to prevent corruption
-          const sanitized = decrypted.replace(/[^\x20-\x7E\s]/g, '').trim();
-          setDecryptedContent(sanitized || '[Unable to decrypt message]');
-        } catch (error) {
-          console.error('Failed to decrypt message:', error);
-          setDecryptedContent('[Unable to decrypt message]');
-        } finally {
-          setIsDecrypting(false);
-        }
-      } else {
-        // Sanitize regular content too
-        const sanitized = message.content.replace(/[^\x20-\x7E\s]/g, '').trim();
-        setDecryptedContent(sanitized);
-      }
-    };
-
-    decryptMessage();
-  }, [message]);
 
   // Fetch reactions for this message
   useEffect(() => {
@@ -247,18 +213,11 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
           )}
           
           <p className="text-sm break-words">
-            {isDecrypting ? (
-              <span className="opacity-50">🔒 Decrypting...</span>
-            ) : (
-              decryptedContent
-            )}
+            {message.content}
           </p>
-        <div className="flex items-center justify-between mt-1">
-          <p className="text-xs opacity-70">
-            {formatMessageTime(message.created_at)}
-            {message.encrypted_content && (
-              <span className="ml-2">🔒</span>
-            )}
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-xs opacity-70">
+              {formatMessageTime(message.created_at)}
           </p>
           
           {/* Message Actions */}
@@ -293,7 +252,6 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
                         className="h-8 w-8 p-0 hover:bg-accent"
                         onClick={() => {
                           addReaction(emoji);
-                          setShowEmojiPicker(false);
                         }}
                       >
                         {emoji}

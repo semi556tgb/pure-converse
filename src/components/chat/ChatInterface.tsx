@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { encryption } from '@/lib/encryption';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -192,14 +191,12 @@ export default function ChatInterface() {
           `)
           .eq('conversation_id', conversationId);
 
-        // Get recent messages with encryption fields and reply info
+        // Get recent messages with reply info
         const { data: messages } = await supabase
           .from('messages')
           .select(`
             id,
             content,
-            encrypted_content,
-            encryption_key_id,
             sender_id,
             created_at,
             reply_to,
@@ -232,19 +229,32 @@ export default function ChatInterface() {
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || !user) return;
 
-    try {
-      // Encrypt the message
-      const { encryptedContent, encryptionKeyId } = await encryption.encryptMessage(
-        newMessage.trim(),
-        selectedConversation
-      );
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      content: newMessage.trim(),
+      sender_id: user.id,
+      created_at: new Date().toISOString(),
+      reply_to: replyingTo?.id,
+      profiles: profile || { id: user.id, username: 'You', status: 'online' }
+    };
 
+    // Optimistically add message to UI
+    setConversations(prev => prev.map(conv => 
+      conv.id === selectedConversation 
+        ? { ...conv, messages: [...conv.messages, tempMessage] }
+        : conv
+    ));
+
+    const messageText = newMessage.trim();
+    setNewMessage('');
+    setReplyingTo(null);
+    setCharacterCount(0);
+
+    try {
       const messageData: any = {
         conversation_id: selectedConversation,
         sender_id: user.id,
-        content: '[Encrypted]', // Placeholder for unencrypted fallback
-        encrypted_content: encryptedContent,
-        encryption_key_id: encryptionKeyId
+        content: messageText
       };
 
       // Add reply reference if replying
@@ -256,15 +266,21 @@ export default function ChatInterface() {
         .from('messages')
         .insert(messageData);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      setNewMessage('');
-      setReplyingTo(null);
+      // Refresh to get the real message with proper ID
       fetchConversations();
     } catch (error) {
       console.error('Error sending message:', error);
+      
+      // Remove the optimistic message on error
+      setConversations(prev => prev.map(conv => 
+        conv.id === selectedConversation 
+          ? { ...conv, messages: conv.messages.filter(m => m.id !== tempMessage.id) }
+          : conv
+      ));
+
+      setNewMessage(messageText); // Restore message
       toast({
         title: "Error",
         description: "Failed to send message",
