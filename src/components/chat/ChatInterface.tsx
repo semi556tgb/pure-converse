@@ -274,7 +274,7 @@ export default function ChatInterface() {
         </div>
 
         {/* Friends List */}
-        <FriendsList onChatSelected={setSelectedConversation} />
+        <FriendsList onChatSelected={setSelectedConversation} onConversationCreated={fetchConversations} />
 
         {/* Conversations List */}
         <div className="flex-1 overflow-y-auto">

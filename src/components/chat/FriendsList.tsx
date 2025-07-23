@@ -12,9 +12,10 @@ interface Friend {
 
 interface FriendsListProps {
   onChatSelected: (conversationId: string) => void;
+  onConversationCreated: () => void;
 }
 
-export default function FriendsList({ onChatSelected }: FriendsListProps) {
+export default function FriendsList({ onChatSelected, onConversationCreated }: FriendsListProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -76,7 +77,12 @@ export default function FriendsList({ onChatSelected }: FriendsListProps) {
 
       const conversationId = data;
       if (conversationId) {
-        onChatSelected(conversationId);
+        // First refresh conversations list, then select the conversation
+        onConversationCreated();
+        setTimeout(() => {
+          onChatSelected(conversationId);
+        }, 100);
+        
         toast({
           title: "Chat opened",
           description: "You can now start chatting!"
