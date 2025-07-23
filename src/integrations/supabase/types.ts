@@ -14,53 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      bot_commands: {
-        Row: {
-          bot_id: string
-          command_name: string
-          created_at: string
-          description: string | null
-          id: string
-          is_enabled: boolean
-          response_content: Json | null
-          response_type: string
-          updated_at: string
-          usage_count: number
-        }
-        Insert: {
-          bot_id: string
-          command_name: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_enabled?: boolean
-          response_content?: Json | null
-          response_type?: string
-          updated_at?: string
-          usage_count?: number
-        }
-        Update: {
-          bot_id?: string
-          command_name?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_enabled?: boolean
-          response_content?: Json | null
-          response_type?: string
-          updated_at?: string
-          usage_count?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bot_commands_bot_id_fkey"
-            columns: ["bot_id"]
-            isOneToOne: false
-            referencedRelation: "discord_bots"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       calls: {
         Row: {
           call_type: string | null
@@ -180,45 +133,6 @@ export type Database = {
           },
         ]
       }
-      discord_bots: {
-        Row: {
-          bot_description: string | null
-          bot_id: string | null
-          bot_name: string
-          bot_token: string
-          created_at: string
-          features: Json | null
-          id: string
-          status: string | null
-          updated_at: string
-          user_id: string | null
-        }
-        Insert: {
-          bot_description?: string | null
-          bot_id?: string | null
-          bot_name: string
-          bot_token: string
-          created_at?: string
-          features?: Json | null
-          id?: string
-          status?: string | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Update: {
-          bot_description?: string | null
-          bot_id?: string | null
-          bot_name?: string
-          bot_token?: string
-          created_at?: string
-          features?: Json | null
-          id?: string
-          status?: string | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       friend_requests: {
         Row: {
           created_at: string
@@ -326,7 +240,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_friend_conversation: {
+        Args: { friend_id: string }
+        Returns: string
+      }
+      user_is_conversation_participant: {
+        Args: { conversation_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
