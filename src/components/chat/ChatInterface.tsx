@@ -158,6 +158,7 @@ export default function ChatInterface() {
         conversations!inner(
           id,
           name,
+          group_name,
           type,
           created_at
         )
@@ -211,7 +212,7 @@ export default function ChatInterface() {
 
         return {
           id: conversationId,
-          name: item.conversations.name,
+          name: item.conversations.name || item.conversations.group_name,
           type: item.conversations.type,
           participants: participants?.map(p => p.profiles) || [],
           messages: messages || []
