@@ -11,6 +11,7 @@ import { useTheme } from '@/components/ThemeProvider';
 import { useToast } from '@/hooks/use-toast';
 import AddFriend from './AddFriend';
 import PendingRequests from './PendingRequests';
+import FriendsList from './FriendsList';
 
 interface Profile {
   id: string;
@@ -40,7 +41,7 @@ export default function ChatInterface() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [profile, setProfile] = useState<Profile | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -256,21 +257,24 @@ export default function ChatInterface() {
           </div>
         </div>
 
+        {/* Friends List */}
+        <FriendsList onChatSelected={setSelectedConversation} />
+
         {/* Conversations List */}
         <div className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground">
               <p>No conversations yet</p>
-              <p className="text-sm mt-2">Create your first conversation above</p>
+              <p className="text-sm mt-2">Add friends to start chatting</p>
             </div>
           ) : (
             conversations.map((conversation) => (
               <div
                 key={conversation.id}
                 className={`p-4 hover:bg-accent cursor-pointer border-b border-border ${
-                  selectedConversation?.id === conversation.id ? 'bg-accent' : ''
+                  selectedConversation === conversation.id ? 'bg-accent' : ''
                 }`}
-                onClick={() => setSelectedConversation(conversation)}
+                onClick={() => setSelectedConversation(conversation.id)}
               >
                 <div className="flex items-center space-x-3">
                   <Avatar>
