@@ -32,6 +32,7 @@ interface Message {
   content: string;
   sender_id: string;
   created_at: string;
+  reply_to?: string;
   profiles: Profile;
 }
 
@@ -206,7 +207,8 @@ export default function ChatInterface() {
               id,
               username,
               status,
-              avatar_url
+              avatar_url,
+              display_name
             )
           `)
           .eq('conversation_id', conversationId)
@@ -513,16 +515,21 @@ export default function ChatInterface() {
             </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {conversation.messages.map((message) => (
-                    <MessageDisplay
-                      key={message.id}
-                      message={message}
-                      isCurrentUser={message.sender_id === user?.id}
-                      onReply={setReplyingTo}
-                      onMessageDeleted={fetchConversations}
-                    />
-                  ))}
+                <div className="flex-1 overflow-y-auto p-4">
+                  {conversation.messages.map((message) => {
+                    const replyToMessage = message.reply_to ? 
+                      conversation.messages.find(m => m.id === message.reply_to) : null;
+                    return (
+                      <MessageDisplay
+                        key={message.id}
+                        message={message}
+                        isCurrentUser={message.sender_id === user?.id}
+                        onReply={setReplyingTo}
+                        onMessageDeleted={fetchConversations}
+                        replyToMessage={replyToMessage}
+                      />
+                    );
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
 

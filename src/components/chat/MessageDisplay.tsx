@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { encryption } from '@/lib/encryption';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Trash2, Reply, MoreVertical, Smile } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,19 +37,22 @@ interface MessageDisplayProps {
     profiles?: {
       username: string;
       display_name?: string;
+      avatar_url?: string;
     };
   };
   isCurrentUser: boolean;
   onReply?: (message: any) => void;
   onMessageDeleted?: () => void;
+  replyToMessage?: any;
 }
 
-export default function MessageDisplay({ message, isCurrentUser, onReply, onMessageDeleted }: MessageDisplayProps) {
+export default function MessageDisplay({ message, isCurrentUser, onReply, onMessageDeleted, replyToMessage }: MessageDisplayProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [decryptedContent, setDecryptedContent] = useState<string>('');
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [reactions, setReactions] = useState<MessageReaction[]>([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   useEffect(() => {
     const decryptMessage = async () => {
@@ -209,28 +213,46 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
   };
 
   return (
-    <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} group`}>
-      <div
-        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative ${
-          isCurrentUser
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-muted text-muted-foreground'
-        }`}
-      >
-        {/* Show username for non-current user messages */}
-        {!isCurrentUser && message.profiles && (
-          <p className="text-xs font-medium mb-1 opacity-70">
-            {message.profiles.display_name || message.profiles.username}
-          </p>
+    <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} group mb-4`}>
+      {!isCurrentUser && (
+        <Avatar className="w-8 h-8 mr-2 mt-1">
+          <AvatarImage src={message.profiles?.avatar_url} />
+          <AvatarFallback className="text-xs">
+            {message.profiles?.username?.charAt(0).toUpperCase() || 'U'}
+          </AvatarFallback>
+        </Avatar>
+      )}
+      
+      <div className="flex flex-col max-w-xs lg:max-w-md">
+        {/* Reply indicator */}
+        {message.reply_to && replyToMessage && (
+          <div className={`text-xs text-muted-foreground mb-1 p-2 rounded bg-accent/50 border-l-2 border-primary/50 ${isCurrentUser ? 'ml-auto' : ''}`}>
+            <span className="font-medium">Replying to {replyToMessage.profiles?.username}:</span>
+            <div className="truncate">{replyToMessage.content?.substring(0, 50)}...</div>
+          </div>
         )}
         
-        <p className="text-sm break-words">
-          {isDecrypting ? (
-            <span className="opacity-50">🔒 Decrypting...</span>
-          ) : (
-            decryptedContent
+        <div
+          className={`px-4 py-2 rounded-lg relative ${
+            isCurrentUser
+              ? 'bg-primary text-primary-foreground ml-auto rounded-br-sm'
+              : 'bg-muted text-muted-foreground rounded-bl-sm'
+          }`}
+        >
+          {/* Show username for non-current user messages */}
+          {!isCurrentUser && message.profiles && (
+            <p className="text-xs font-medium mb-1 opacity-70">
+              {message.profiles.display_name || message.profiles.username}
+            </p>
           )}
-        </p>
+          
+          <p className="text-sm break-words">
+            {isDecrypting ? (
+              <span className="opacity-50">🔒 Decrypting...</span>
+            ) : (
+              decryptedContent
+            )}
+          </p>
         <div className="flex items-center justify-between mt-1">
           <p className="text-xs opacity-70">
             {formatMessageTime(message.created_at)}
@@ -261,15 +283,18 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
                     <Smile className="h-3 w-3" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-2">
-                  <div className="flex space-x-2">
-                    {['❤️', '👍', '👎', '😂', '😮', '😢'].map(emoji => (
+                <PopoverContent className="w-auto p-2 bg-card border border-border shadow-lg">
+                  <div className="grid grid-cols-6 gap-2">
+                    {['❤️', '👍', '👎', '😂', '😮', '😢', '😍', '😊', '😎', '🔥', '💯', '🎉', '👏', '🙌', '💪', '😭', '😱', '🤔', '😴', '🥳', '🤗', '😜', '🤨', '😏'].map(emoji => (
                       <Button
                         key={emoji}
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => addReaction(emoji)}
+                        className="h-8 w-8 p-0 hover:bg-accent"
+                        onClick={() => {
+                          addReaction(emoji);
+                          setShowEmojiPicker(false);
+                        }}
                       >
                         {emoji}
                       </Button>
@@ -298,11 +323,12 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
               </DropdownMenu>
             )}
           </div>
+          </div>
         </div>
         
         {/* Show reactions if any */}
         {reactions.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
+          <div className={`flex flex-wrap gap-1 mt-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
             {reactions.map((reaction) => {
               const userReacted = reaction.user_id === user?.id;
               return (
@@ -322,6 +348,15 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
           </div>
         )}
       </div>
+      
+      {isCurrentUser && (
+        <Avatar className="w-8 h-8 ml-2 mt-1">
+          <AvatarImage src={message.profiles?.avatar_url} />
+          <AvatarFallback className="text-xs">
+            {message.profiles?.username?.charAt(0).toUpperCase() || 'U'}
+          </AvatarFallback>
+        </Avatar>
+      )}
     </div>
   );
 }

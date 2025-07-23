@@ -3,7 +3,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { MessageCircle, Users } from 'lucide-react';
+import { MessageCircle, Users, UserMinus, UserX } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Friend {
   id: string;
@@ -100,6 +106,58 @@ export default function FriendsList({ onChatSelected, onConversationCreated }: F
     }
   };
 
+  const removeFriend = async (friendId: string, friendUsername: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase.rpc('remove_friend', {
+        friend_id: friendId
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Friend removed",
+        description: `${friendUsername} has been removed from your friends list`
+      });
+      
+      fetchFriends();
+    } catch (error) {
+      console.error('Error removing friend:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove friend",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const blockUser = async (userId: string, username: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase.rpc('block_user', {
+        user_id_to_block: userId
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "User blocked",
+        description: `${username} has been blocked`
+      });
+      
+      fetchFriends();
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to block user",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (friends.length === 0) {
     return (
       <div className="p-4 text-center text-muted-foreground">
@@ -119,10 +177,12 @@ export default function FriendsList({ onChatSelected, onConversationCreated }: F
         {friends.map((friend) => (
           <div
             key={friend.id}
-            className="flex items-center justify-between p-3 mx-2 rounded-lg hover:bg-accent cursor-pointer group"
-            onClick={() => startChatWithFriend(friend.id)}
+            className="flex items-center justify-between p-3 mx-2 rounded-lg hover:bg-accent group"
           >
-            <div className="flex items-center space-x-3">
+            <div 
+              className="flex items-center space-x-3 flex-1 cursor-pointer"
+              onClick={() => startChatWithFriend(friend.id)}
+            >
               <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                 <span className="text-sm font-medium text-primary">
                   {friend.username.charAt(0).toUpperCase()}
@@ -130,14 +190,51 @@ export default function FriendsList({ onChatSelected, onConversationCreated }: F
               </div>
               <span className="text-sm font-medium">{friend.username}</span>
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={loading}
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <MessageCircle className="h-4 w-4" />
-            </Button>
+            
+            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={loading}
+                onClick={() => startChatWithFriend(friend.id)}
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Users className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-card border border-border">
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFriend(friend.id, friend.username);
+                    }}
+                    className="text-orange-600 focus:text-orange-600"
+                  >
+                    <UserMinus className="h-3 w-3 mr-2" />
+                    Remove Friend
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      blockUser(friend.id, friend.username);
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <UserX className="h-3 w-3 mr-2" />
+                    Block User
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         ))}
       </div>
