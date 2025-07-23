@@ -14,6 +14,8 @@ import AddFriend from './AddFriend';
 import PendingRequests from './PendingRequests';
 import FriendsList from './FriendsList';
 import MessageDisplay from './MessageDisplay';
+import TypingIndicator from './TypingIndicator';
+import UserProfile from './UserProfile';
 
 interface Profile {
   id: string;
@@ -47,6 +49,8 @@ export default function ChatInterface() {
   const [newMessage, setNewMessage] = useState('');
   const [replyingTo, setReplyingTo] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -280,6 +284,7 @@ export default function ChatInterface() {
           <div className="flex space-x-2">
             <AddFriend onFriendAdded={fetchConversations} />
             <PendingRequests onRequestHandled={fetchConversations} />
+            <UserProfile />
           </div>
         </div>
 
@@ -345,6 +350,9 @@ export default function ChatInterface() {
                   ))}
                   <div ref={messagesEndRef} />
                 </div>
+
+                {/* Typing Indicator */}
+                <TypingIndicator conversationId={selectedConversation} />
 
                 {/* Message Input */}
                 <div className="p-4 border-t border-border">

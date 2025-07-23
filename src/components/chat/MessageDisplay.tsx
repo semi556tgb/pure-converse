@@ -33,6 +33,10 @@ interface MessageDisplayProps {
     sender_id: string;
     created_at: string;
     reply_to?: string;
+    profiles?: {
+      username: string;
+      display_name?: string;
+    };
   };
   isCurrentUser: boolean;
   onReply?: (message: any) => void;
@@ -55,7 +59,9 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
             message.encrypted_content,
             message.encryption_key_id
           );
-          setDecryptedContent(decrypted);
+          // Sanitize the decrypted content to prevent corruption
+          const sanitized = decrypted.replace(/[^\x20-\x7E\s]/g, '').trim();
+          setDecryptedContent(sanitized || '[Unable to decrypt message]');
         } catch (error) {
           console.error('Failed to decrypt message:', error);
           setDecryptedContent('[Unable to decrypt message]');
@@ -63,7 +69,9 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
           setIsDecrypting(false);
         }
       } else {
-        setDecryptedContent(message.content);
+        // Sanitize regular content too
+        const sanitized = message.content.replace(/[^\x20-\x7E\s]/g, '').trim();
+        setDecryptedContent(sanitized);
       }
     };
 
@@ -117,6 +125,18 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
 
   const addReaction = async (emoji: string) => {
     try {
+      // Check if user already reacted with this emoji
+      const existingReaction = reactions.find(r => 
+        r.emoji === emoji && 
+        r.user_id === user?.id
+      );
+
+      if (existingReaction) {
+        // Remove reaction if it already exists
+        await removeReaction(existingReaction.id);
+        return;
+      }
+
       const { error } = await supabase
         .from('message_reactions')
         .insert({
@@ -131,6 +151,25 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
       toast({
         title: "Error",
         description: "Failed to add reaction",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const removeReaction = async (reactionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('message_reactions')
+        .delete()
+        .eq('id', reactionId)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error removing reaction:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove reaction",
         variant: "destructive"
       });
     }
@@ -178,7 +217,14 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
             : 'bg-muted text-muted-foreground'
         }`}
       >
-        <p className="text-sm">
+        {/* Show username for non-current user messages */}
+        {!isCurrentUser && message.profiles && (
+          <p className="text-xs font-medium mb-1 opacity-70">
+            {message.profiles.display_name || message.profiles.username}
+          </p>
+        )}
+        
+        <p className="text-sm break-words">
           {isDecrypting ? (
             <span className="opacity-50">🔒 Decrypting...</span>
           ) : (
@@ -257,14 +303,22 @@ export default function MessageDisplay({ message, isCurrentUser, onReply, onMess
         {/* Show reactions if any */}
         {reactions.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
-            {reactions.map((reaction) => (
-              <span
-                key={reaction.id}
-                className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-background border"
-              >
-                {reaction.emoji} {reaction.count && reaction.count > 1 ? reaction.count : ''}
-              </span>
-            ))}
+            {reactions.map((reaction) => {
+              const userReacted = reaction.user_id === user?.id;
+              return (
+                <button
+                  key={reaction.id}
+                  onClick={() => userReacted ? removeReaction(reaction.id) : addReaction(reaction.emoji)}
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs border transition-colors ${
+                    userReacted 
+                      ? 'bg-primary/20 border-primary text-primary' 
+                      : 'bg-background border-border hover:bg-accent'
+                  }`}
+                >
+                  {reaction.emoji} {reaction.count && reaction.count > 1 ? reaction.count : ''}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

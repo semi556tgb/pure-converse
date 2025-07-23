@@ -256,30 +256,66 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
           created_at: string | null
+          display_name: string | null
           id: string
+          is_typing: boolean | null
           last_seen: string | null
           status: string | null
+          typing_conversation_id: string | null
           updated_at: string | null
           username: string
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string | null
+          display_name?: string | null
           id: string
+          is_typing?: boolean | null
           last_seen?: string | null
           status?: string | null
+          typing_conversation_id?: string | null
           updated_at?: string | null
           username: string
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string | null
+          display_name?: string | null
           id?: string
+          is_typing?: boolean | null
           last_seen?: string | null
           status?: string | null
+          typing_conversation_id?: string | null
           updated_at?: string | null
           username?: string
+        }
+        Relationships: []
+      }
+      typing_status: {
+        Row: {
+          conversation_id: string
+          id: string
+          is_typing: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          is_typing?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          is_typing?: boolean | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
