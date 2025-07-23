@@ -185,6 +185,7 @@ export type Database = {
       }
       friend_requests: {
         Row: {
+          blocked_at: string | null
           created_at: string
           id: string
           receiver_id: string
@@ -193,6 +194,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          blocked_at?: string | null
           created_at?: string
           id?: string
           receiver_id: string
@@ -201,6 +203,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          blocked_at?: string | null
           created_at?: string
           id?: string
           receiver_id?: string
@@ -374,6 +377,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      block_user: {
+        Args: { user_id_to_block: string }
+        Returns: boolean
+      }
       create_friend_conversation: {
         Args: { friend_id: string }
         Returns: string
@@ -388,6 +395,10 @@ export type Database = {
       }
       kick_group_member: {
         Args: { conversation_id_param: string; member_id_param: string }
+        Returns: boolean
+      }
+      remove_friend: {
+        Args: { friend_id: string }
         Returns: boolean
       }
       user_is_conversation_participant: {
