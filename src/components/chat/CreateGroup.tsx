@@ -99,7 +99,7 @@ export default function CreateGroup({ onGroupCreated }: CreateGroupProps) {
         .from('conversations')
         .insert({
           type: 'group',
-          group_name: groupName.trim(),
+          name: groupName.trim(), // Use 'name' instead of 'group_name'
           created_by: user.id
         })
         .select()
