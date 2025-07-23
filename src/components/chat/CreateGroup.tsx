@@ -94,17 +94,21 @@ export default function CreateGroup({ onGroupCreated }: CreateGroupProps) {
     setLoading(true);
     
     try {
+      console.log('Creating group with user:', user.id);
+      console.log('Auth state:', await supabase.auth.getUser());
+      
       // Create group conversation
       const { data: conversation, error: convError } = await supabase
         .from('conversations')
         .insert({
           type: 'group',
-          name: groupName.trim(), // Use 'name' instead of 'group_name'
+          name: groupName.trim(),
           created_by: user.id
         })
         .select()
         .single();
 
+      console.log('Insert result:', { conversation, convError });
       if (convError) throw convError;
 
       // Add all participants (creator + selected friends)
