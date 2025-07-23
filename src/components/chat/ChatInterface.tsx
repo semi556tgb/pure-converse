@@ -56,6 +56,11 @@ export default function ChatInterface() {
   const [activeCall, setActiveCall] = useState<string | null>(null);
   const [characterCount, setCharacterCount] = useState(0);
   const MAX_MESSAGE_LENGTH = 2000;
+  const [callNotifications, setCallNotifications] = useState<Array<{
+    id: string;
+    username: string;
+    timestamp: string;
+  }>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,6 +81,39 @@ export default function ChatInterface() {
           () => {
             // Refresh conversations when new message is inserted
             fetchConversations();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'calls'
+          },
+          async (payload) => {
+            if (payload.new.status === 'active' && payload.new.initiator_id !== user.id) {
+              // Get the initiator's profile
+              const { data: initiatorProfile } = await supabase
+                .from('profiles')
+                .select('username')
+                .eq('id', payload.new.initiator_id)
+                .single();
+
+              if (initiatorProfile) {
+                const notification = {
+                  id: payload.new.id,
+                  username: initiatorProfile.username,
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+                
+                setCallNotifications(prev => [...prev, notification]);
+                
+                // Remove notification after 10 seconds
+                setTimeout(() => {
+                  setCallNotifications(prev => prev.filter(n => n.id !== notification.id));
+                }, 10000);
+              }
+            }
           }
         )
         .subscribe();
@@ -511,6 +549,24 @@ export default function ChatInterface() {
           onEndCall={() => setActiveCall(null)}
         />
       )}
+
+      {/* Call Notifications */}
+      {callNotifications.map((notification) => (
+        <div
+          key={notification.id}
+          className="fixed top-4 right-4 z-50 bg-background border border-border rounded-lg p-3 shadow-lg min-w-[250px]"
+        >
+          <div className="flex items-center space-x-2">
+            <Phone className="h-4 w-4 text-green-500" />
+            <span className="text-sm font-medium">
+              {notification.username} started a call.
+            </span>
+            <span className="text-xs text-muted-foreground ml-auto">
+              {notification.timestamp}
+            </span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
