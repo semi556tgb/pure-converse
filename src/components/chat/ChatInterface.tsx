@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { encryption } from '@/lib/encryption';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import AddFriend from './AddFriend';
 import PendingRequests from './PendingRequests';
 import FriendsList from './FriendsList';
+import MessageDisplay from './MessageDisplay';
 
 interface Profile {
   id: string;
@@ -137,12 +139,14 @@ export default function ChatInterface() {
           `)
           .eq('conversation_id', conversationId);
 
-        // Get recent messages
+        // Get recent messages with encryption fields
         const { data: messages } = await supabase
           .from('messages')
           .select(`
             id,
             content,
+            encrypted_content,
+            encryption_key_id,
             sender_id,
             created_at,
             profiles!inner(
@@ -172,24 +176,36 @@ export default function ChatInterface() {
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || !user) return;
 
-    const { error } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: selectedConversation,
-        sender_id: user.id,
-        content: newMessage.trim()
-      });
+    try {
+      // Encrypt the message
+      const { encryptedContent, encryptionKeyId } = await encryption.encryptMessage(
+        newMessage.trim(),
+        selectedConversation
+      );
 
-    if (error) {
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: selectedConversation,
+          sender_id: user.id,
+          content: '[Encrypted]', // Placeholder for unencrypted fallback
+          encrypted_content: encryptedContent,
+          encryption_key_id: encryptionKeyId
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      setNewMessage('');
+      fetchConversations();
+    } catch (error) {
+      console.error('Error sending message:', error);
       toast({
         title: "Error",
         description: "Failed to send message",
         variant: "destructive"
       });
-    } else {
-      setNewMessage('');
-      // Refresh conversations to get new message
-      fetchConversations();
     }
   };
 
@@ -344,33 +360,14 @@ export default function ChatInterface() {
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   {conversation.messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${
-                    message.sender_id === user?.id ? 'justify-end' : 'justify-start'
-                  }`}
-                >
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.sender_id === user?.id
-                        ? 'bg-chat-bubble-user text-chat-bubble-user-foreground'
-                        : 'bg-chat-bubble-other text-chat-bubble-other-foreground'
-                    }`}
-                  >
-                    {message.sender_id !== user?.id && (
-                      <p className="text-xs text-muted-foreground mb-1">
-                        {message.profiles.username}
-                      </p>
-                    )}
-                    <p className="text-sm">{message.content}</p>
-                    <p className="text-xs opacity-70 mt-1">
-                      {formatTime(message.created_at)}
-                    </p>
-                  </div>
+                    <MessageDisplay
+                      key={message.id}
+                      message={message}
+                      isCurrentUser={message.sender_id === user?.id}
+                    />
+                  ))}
+                  <div ref={messagesEndRef} />
                 </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
 
             {/* Message Input */}
             <div className="p-4 border-t border-border">

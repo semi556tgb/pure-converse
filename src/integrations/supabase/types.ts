@@ -166,6 +166,8 @@ export type Database = {
           conversation_id: string | null
           created_at: string | null
           edited_at: string | null
+          encrypted_content: string | null
+          encryption_key_id: string | null
           id: string
           message_type: string | null
           sender_id: string | null
@@ -175,6 +177,8 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           edited_at?: string | null
+          encrypted_content?: string | null
+          encryption_key_id?: string | null
           id?: string
           message_type?: string | null
           sender_id?: string | null
@@ -184,6 +188,8 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           edited_at?: string | null
+          encrypted_content?: string | null
+          encryption_key_id?: string | null
           id?: string
           message_type?: string | null
           sender_id?: string | null
